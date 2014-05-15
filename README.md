@@ -96,7 +96,7 @@ Your identification has been saved in /home/example/.ssh/[Rackspace Cloud Userna
 Your public key has been saved in /home/example/.ssh/[Rackspace Cloud Username]_root_rsa.pub.
 
 ssh-add /home/example/.ssh/[Rackspace Cloud Username]_root_rsa
-</prev>
+</pre>
 
 Add the key pair to the Rackspace Cloud region
 
@@ -182,7 +182,7 @@ Type "help" for help.
 
 postgres=#
 
-</prev>
+</pre>
 
 
 ##  HAVE FUN AND ENJOY
