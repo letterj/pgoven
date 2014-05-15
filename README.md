@@ -64,7 +64,7 @@ export OS_AUTH_URL=https://identity.api.rackspacecloud.com/v2.0/
 export OS_USERNAME=[get from your Rackspace Cloud Account.]
 export OS_TENANT_ID=[get from your Rackspace Cloud Account. Same as OS_TENANT_NAME used above.]
 export HEAT_URL=https://[region].orchestration.api.rackspacecloud.com/v1/${OS_TENANT_ID}  
-export OS_PASSWORD=<get from your Rackspace Cloud Account. Really the account password.]
+export OS_PASSWORD=[get from your Rackspace Cloud Account. Really the account password.]
 </pre>
 
 Source the ./heatrc file for the region you want to work in.
