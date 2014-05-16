@@ -132,7 +132,7 @@ heat stack-show [UUID]
 | description          | PostgreSQL Template 9.4beta                                                                                             |
 | disable_rollback     | True                                                                                                                    |
 | id                   | [UUID]                                                                                    |
-| links                | https://iad.orchestration.api.rackspacecloud.com/v1/[tenant]/stacks/pgtest94b-server/1ded29a0-4519-400b-b165-0ff50ab374df |
+| links                | https://iad.orchestration.api.rackspacecloud.com/v1/[tenant]/stacks/pgtest94b-server/[UUID]                            |
 | notification_topics  | []                                                                                                                      |
 | outputs              | [                                                                                                                       |
 |                      |   {                                                                                                                     |
