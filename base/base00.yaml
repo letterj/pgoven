@@ -54,10 +54,11 @@ resources:
         ## Harden some of the things
         export DEBIAN_FRONTEND=noninteractive
         export myhostname=`hostname`
-        sudo apt-get install -y ufw
+        sudo apt-get install -y ufw vim git 
         sudo ufw allow ssh
         sudo ufw enable
         sudo apt-get update 
+        sudo update-alternatives --set editor /usr/bin/vim.basic
         sudo useradd -s /bin/bash -m -G sudo letterj
         
  

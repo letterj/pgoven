@@ -1,0 +1,110 @@
+heat_template_version: 2013-05-23
+ 
+description: |
+  PostgreSQL Template 01
+ 
+parameters:
+ 
+  ssh_key:
+    type: string
+    description: Registered key pair for root account
+  server_name:
+    type: string
+    description: Name of the PostgreSQL database instance
+    default:
+      str_replace:
+        template: stack_name_pgdb_server
+        params:
+          stack_name: { get_param: "OS::stack_name" }
+  image:
+    type: string
+    description: Server image id to use
+    default: Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
+    constraints:
+    # only tested on Ubuntu images so far
+    - allowed_values:
+      - Debian 7 (Wheezy) (PVHVM) 
+      - Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
+      description: must be a valid Ubuntu image id
+  flavor:
+    description: Server flavor id to use
+    type: string
+    default: 4 GB Performance
+    constraints:
+    - allowed_values:
+      - 120 GB Performance
+      - 90 GB Performance
+      - 60 GB Performance
+      - 30 GB Performance
+      - 4 GB Performance
+      description: must be a valid Rackspace Cloud Server flavor.
+  postgres_version:
+    description: Version of PostgreSQL database
+    type: string
+    default: 9.3
+    constraints:
+    # only supported versions of PostgreSQL
+    - allowed_values:
+      - 8.4
+      - 9.0
+      - 9.1
+      - 9.2
+      - 9.3
+      description: must be a valid version of PostgreSQL.
+ 
+resources:
+  pgdb_server:
+    type: OS::Nova::Server
+    properties:
+      name: { get_param: server_name }
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: ssh_key }
+      user_data_format: RAW
+      config_drive: "true"
+      user_data: 
+        str_replace:
+          template: |
+            #!/bin/bash -v
+            ## Harden some of the things
+            export DEBIAN_FRONTEND=noninteractive
+            export myhostname=`hostname`
+            sudo apt-get install -y ufw
+            sudo ufw allow ssh
+            sudo ufw allow 5432
+            sudo ufw enable
+            sudo apt-get update 
+            ## Install and set up sar to run at 5 minute intervals
+            sudo apt-get install -y sysstat
+            sudo sed -i 's/false/true/g' /etc/default/sysstat
+            sudo sed -i 's/5-55\/10/\*\/5/g' /etc/cron.d/sysstat
+            sudo service sysstat restart
+            ## Setup the official PostgreSQL debian/ubuntu repo
+            sudo echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -c | awk '{print $(NF)}')-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+            sudo wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - 
+            sudo apt-get update
+            ## Install PostgreSQL
+            sudo sysctl -w kernel.shmmax=1073741824
+            sudo sysctl -p /etc/sysctl.conf
+            sudo apt-get install -y postgresql-%postgres_version% postgresql-doc-%postgres_version% postgresql-contrib-%postgres_version%
+            sudo apt-get install -y postgresql-server-dev-%postgres_version%
+            ## Modify the postgresql.conf
+            ## Create user, database and edit pg_hba.conf
+            
+          params:
+            "%postgres_version%": { get_param: postgres_version }
+            #"%db_name%": { get_param: db_name }
+            #"%db_user%": { get_param: db_username }
+            #"%db_password%": { get_param: db_password } 
+ 
+outputs:
+  ssh:
+    value:
+      str_replace:
+        template: ssh root@%host%
+        params:
+          "%host%":
+            get_attr:
+            - pgdb_server
+            - accessIPv4
+    description: ssh
