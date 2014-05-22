@@ -78,11 +78,23 @@ resources:
             sudo echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -c | awk '{print $(NF)}')-pgdg main 9.4" >> /etc/apt/sources.list.d/pgdg.list
             sudo wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - 
             sudo apt-get update
+            ## set up the data disk
+            sudo apt-get install parted xfsprogs
+            sudo mkfs -t xfs /dev/xvde1
+            sudo mkdir -p /data
+            sudo echo '/dev/xvde1          /data  xfs    noatime,noquota,nobarrier      0      2' >> /etc/fstab
+            sudo mount -a
             ## Install PostgreSQL
             sudo sysctl -w kernel.shmmax=1073741824
             sudo sysctl -p /etc/sysctl.conf
             sudo apt-get install -y postgresql-%postgres_version% postgresql-doc-%postgres_version% postgresql-contrib-%postgres_version%
             sudo apt-get install -y postgresql-server-dev-%postgres_version%
+            ## Move PG data directory to the ephemeral disk.
+            sudo service postgresql stop
+            sudo cp -a /var/lib/postgresql/ /data/postgresql
+            sudo mv /var/lib/postgresql /var/lib/postgresql-old
+            sudo ln -s /data/postgresql /var/lib/postgresql
+            sudo service postgresql start
             
           params:
             "%postgres_version%": { get_param: postgres_version }
