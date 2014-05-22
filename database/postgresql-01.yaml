@@ -1,7 +1,7 @@
 heat_template_version: 2013-05-23
  
 description: |
-  PostgreSQL Template 9.4beta
+  PostgreSQL Template 01
  
 parameters:
  
@@ -32,17 +32,24 @@ parameters:
     default: 4 GB Performance
     constraints:
     - allowed_values:
+      - 120 GB Performance
+      - 90 GB Performance
+      - 60 GB Performance
       - 30 GB Performance
       - 4 GB Performance
       description: must be a valid Rackspace Cloud Server flavor.
   postgres_version:
     description: Version of PostgreSQL database
     type: string
-    default: 9.4
+    default: 9.3
     constraints:
     # only supported versions of PostgreSQL
     - allowed_values:
-      - 9.4
+      - 8.4
+      - 9.0
+      - 9.1
+      - 9.2
+      - 9.3
       description: must be a valid version of PostgreSQL.
  
 resources:
@@ -67,37 +74,28 @@ resources:
             sudo ufw allow 5432
             sudo ufw enable
             sudo apt-get update 
-            sudo apt-get install vim git tmux 
-            sudo update-alternatives --set editor /usr/bin/vim.basic   
             ## Install and set up sar to run at 5 minute intervals
             sudo apt-get install -y sysstat
             sudo sed -i 's/false/true/g' /etc/default/sysstat
             sudo sed -i 's/5-55\/10/\*\/5/g' /etc/cron.d/sysstat
             sudo service sysstat restart
             ## Setup the official PostgreSQL debian/ubuntu repo
-            sudo echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -c | awk '{print $(NF)}')-pgdg main 9.4" >> /etc/apt/sources.list.d/pgdg.list
+            sudo echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -c | awk '{print $(NF)}')-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
             sudo wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - 
             sudo apt-get update
-            ## set up the data disk
-            sudo apt-get install parted xfsprogs
-            sudo mkfs -t xfs /dev/xvde1
-            sudo mkdir -p /data
-            sudo echo '/dev/xvde1          /data  xfs    noatime,noquota,nobarrier      0      2' >> /etc/fstab
-            sudo mount -a
             ## Install PostgreSQL
             sudo sysctl -w kernel.shmmax=1073741824
             sudo sysctl -p /etc/sysctl.conf
             sudo apt-get install -y postgresql-%postgres_version% postgresql-doc-%postgres_version% postgresql-contrib-%postgres_version%
             sudo apt-get install -y postgresql-server-dev-%postgres_version%
-            ## Move PG data directory to the ephemeral disk.
-            sudo service postgresql stop
-            sudo cp -a /var/lib/postgresql/ /data/postgresql
-            sudo mv /var/lib/postgresql /var/lib/postgresql-old
-            sudo ln -s /data/postgresql /var/lib/postgresql
-            sudo service postgresql start
+            ## Modify the postgresql.conf
+            ## Create user, database and edit pg_hba.conf
             
           params:
             "%postgres_version%": { get_param: postgres_version }
+            #"%db_name%": { get_param: db_name }
+            #"%db_user%": { get_param: db_username }
+            #"%db_password%": { get_param: db_password } 
  
 outputs:
   ssh:

@@ -54,10 +54,18 @@ resources:
         ## Harden some of the things
         export DEBIAN_FRONTEND=noninteractive
         export myhostname=`hostname`
-        sudo apt-get install -y ufw
+        sudo apt-get install -y ufw vim git 
         sudo ufw allow ssh
         sudo ufw enable
         sudo apt-get update 
+        sudo update-alternatives --set editor /usr/bin/vim.basic
+        ## set up the data disk
+        sudo apt-get install parted xfsprogs
+        sudo mkfs -t xfs /dev/xvde1
+        sudo mkdir -p /data
+        sudo echo '/dev/xvde1          /data  xfs    noatime,noquota,nobarrier      0      2' >> /etc/fstab
+        sudo mount -a
+        ## Create a working user
         sudo useradd -s /bin/bash -m -G sudo letterj
         
  
