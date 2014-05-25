@@ -41,15 +41,15 @@ parameters:
   postgres_version:
     description: Version of PostgreSQL database
     type: string
-    default: 9.3
+    default: "9.3"
     constraints:
     # only supported versions of PostgreSQL
     - allowed_values:
-      - 8.4
-      - 9.0
-      - 9.1
-      - 9.2
-      - 9.3
+      - "8.4"
+      - "9.0"
+      - "9.1"
+      - "9.2"
+      - "9.3"
       description: must be a valid version of PostgreSQL.
  
 resources:
