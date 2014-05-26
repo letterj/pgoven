@@ -51,7 +51,19 @@ parameters:
       - "9.2"
       - "9.3"
       description: must be a valid version of PostgreSQL.
- 
+  client_ip:
+    description: ip address of the client server
+    type: string
+  db_name:
+    description: name of the database
+    type: string
+  db_username:
+    description: name of the database user and owner
+    type: string
+  db_password:
+    description: password of the database user and owner
+    type: string
+
 resources:
   pgdb_server:
     type: OS::Nova::Server
@@ -74,6 +86,8 @@ resources:
             sudo ufw allow 5432
             sudo ufw enable
             sudo apt-get update 
+            sudo apt-get install -y vim
+            sudo update-alternatives --set editor /usr/bin/vim.basic
             ## Install and set up sar to run at 5 minute intervals
             sudo apt-get install -y sysstat
             sudo sed -i 's/false/true/g' /etc/default/sysstat
@@ -100,14 +114,25 @@ resources:
             sudo mv /var/lib/postgresql /var/lib/postgresql-old
             sudo ln -s /data/postgresql /var/lib/postgresql 
             sudo service postgresql start
-            ## Modify the postgresql.conf
-            ## Create user, database and edit pg_hba.conf
+            ## Create user, database 
+            sudo -u postgres psql -c "CREATE USER %db_user% WITH PASSWORD '%db_password%' CREATEDB"
+            sudo -u postgres psql -c "CREATE DATABASE %db_name% WITH OWNER %db_user%"
+            ## Modify the postgresql.conf and pg_hba.conf
+            sudo mv /etc/postgresql/%postgres_version%/main/pg_hba.conf /etc/postgresql/%postgres_version%/main/pg_hba.conf-old
+            sudo echo "local   all             postgres                                peer" >> /etc/postgresql/%postgres_version%/main/pg_hba.conf
+            sudo echo "host    %db_name%       %db_user%       127.0.0.1/32            md5" >> /etc/postgresql/%postgres_version%/main/pg_hba.conf
+            sudo echo "host    %db_name%       %db_user%       %client_ip%/32          md5" >> /etc/postgresql/%postgres_version%/main/pg_hba.conf
+            sudo chown postgres:postgres /etc/postgresql/%postgres_version%/main/pg_hba.conf
+            sudo cp -a /etc/postgresql/%postgres_version%/main/postgresql.conf /etc/postgresql/%postgres_version%/main/postgresql.conf-old
+            sudo sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/%postgres_version%/main/postgresql.conf
+            service postgresql restart
             
           params:
             "%postgres_version%": { get_param: postgres_version }
-            #"%db_name%": { get_param: db_name }
-            #"%db_user%": { get_param: db_username }
-            #"%db_password%": { get_param: db_password } 
+            "%client_ip%": { get_param: client_ip }
+            "%db_name%": { get_param: db_name }
+            "%db_user%": { get_param: db_username }
+            "%db_password%": { get_param: db_password } 
  
 outputs:
   ssh:
@@ -120,3 +145,6 @@ outputs:
             - pgdb_server
             - accessIPv4
     description: ssh
+  private_ip:
+    description: "Private IP of PostgreSQL Database"
+    value: { get_attr: [pgdb_server, privateIPv4] }
