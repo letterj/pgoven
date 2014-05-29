@@ -1,21 +1,22 @@
 heat_template_version: 2013-05-23
- 
+
 description: |
   PostgreSQL Template 01
- 
+
 parameters:
- 
+
   ssh_key:
     type: string
     description: Registered key pair for root account
   server_name:
     type: string
     description: Name of the PostgreSQL database instance
-    default:
-      str_replace:
-        template: stack_name_pgdb_server
-        params:
-          stack_name: { get_param: "OS::stack_name" }
+    default: pg_server
+    # OS::stack_name is only currently accessible in the resources section
+    #  str_replace:
+    #    template: stack_name_base_server
+    #    params:
+    #      stack_name: { get_param: "OS::stack_name" }
   image:
     type: string
     description: Server image id to use
@@ -23,7 +24,7 @@ parameters:
     constraints:
     # only tested on Ubuntu images so far
     - allowed_values:
-      - Debian 7 (Wheezy) (PVHVM) 
+      - Debian 7 (Wheezy) (PVHVM)
       - Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
       description: must be a valid Ubuntu image id
   flavor:
@@ -78,7 +79,7 @@ parameters:
     description: password of the database user and owner
     type: string
     constraints:
-    - length: 
+    - length:
         min: 1
         max: 41
       description:  must be from 1 to 41 characters
@@ -87,7 +88,7 @@ parameters:
 
 resources:
   pgdb_server:
-    type: OS::Nova::Server
+    type: Rackspace::Cloud::Server
     properties:
       name: { get_param: server_name }
       image: { get_param: image }
@@ -95,7 +96,7 @@ resources:
       key_name: { get_param: ssh_key }
       user_data_format: RAW
       config_drive: "true"
-      user_data: 
+      user_data:
         str_replace:
           template: |
             #!/bin/bash -v
@@ -106,7 +107,7 @@ resources:
             sudo ufw allow ssh
             sudo ufw allow 5432
             sudo ufw enable
-            sudo apt-get update 
+            sudo apt-get update
             sudo apt-get install -y vim
             sudo update-alternatives --set editor /usr/bin/vim.basic
             ## Install and set up sar to run at 5 minute intervals
@@ -116,7 +117,7 @@ resources:
             sudo service sysstat restart
             ## Setup the official PostgreSQL debian/ubuntu repo
             sudo echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -c | awk '{print $(NF)}')-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
-            sudo wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - 
+            sudo wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
             sudo apt-get update > /dev/null
             ## set up the data disk
             sudo apt-get install parted xfsprogs
@@ -129,12 +130,12 @@ resources:
             sudo apt-get install -y postgresql-%postgres_version% postgresql-doc-%postgres_version% postgresql-contrib-%postgres_version%
             sudo apt-get install -y postgresql-server-dev-%postgres_version%
             ## Move PG data directory to the ephemeral disk
-            sudo service postgresql stop 
+            sudo service postgresql stop
             sudo cp -a /var/lib/postgresql/ /data/postgresql
             sudo mv /var/lib/postgresql /var/lib/postgresql-old
-            sudo ln -s /data/postgresql /var/lib/postgresql 
+            sudo ln -s /data/postgresql /var/lib/postgresql
             sudo service postgresql start
-            ## Create user, database 
+            ## Create user, database
             sudo -u postgres psql -c "CREATE USER %db_user% WITH PASSWORD '%db_password%' CREATEDB"
             sudo -u postgres psql -c "CREATE DATABASE %db_name% WITH OWNER %db_user%"
             ## Modify the postgresql.conf and pg_hba.conf
@@ -146,14 +147,14 @@ resources:
             sudo cp -a /etc/postgresql/%postgres_version%/main/postgresql.conf /etc/postgresql/%postgres_version%/main/postgresql.conf-old
             sudo sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/%postgres_version%/main/postgresql.conf
             service postgresql restart
-            
+
           params:
             "%postgres_version%": { get_param: postgres_version }
             "%client_ip%": { get_param: client_ip }
             "%db_name%": { get_param: db_name }
             "%db_user%": { get_param: db_username }
-            "%db_password%": { get_param: db_password } 
- 
+            "%db_password%": { get_param: db_password }
+
 outputs:
   ssh:
     value:
