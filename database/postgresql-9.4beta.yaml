@@ -11,11 +11,12 @@ parameters:
   server_name:
     type: string
     description: Name of the PostgreSQL database instance
-    default:
-      str_replace:
-        template: stack_name_pgdb_server
-        params:
-          stack_name: { get_param: "OS::stack_name" }
+    default: pg_server
+    # OS::stack_name is only currently accessible in the resources section
+    #  str_replace:
+    #    template: stack_name_base_server
+    #    params:
+    #      stack_name: { get_param: "OS::stack_name" }
   image:
     type: string
     description: Server image id to use
