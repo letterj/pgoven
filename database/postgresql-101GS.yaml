@@ -1,0 +1,119 @@
+heat_template_version: 2013-05-23
+
+description: |
+  PostgreSQL Template 01
+
+parameters:
+
+  ssh_key:
+    type: string
+    description: Registered key pair for root account
+  server_name:
+    type: string
+    description: Name of the PostgreSQL database instance
+    default: pg_server
+    # OS::stack_name is only currently accessible in the resources section
+    #  str_replace:
+    #    template: stack_name_base_server
+    #    params:
+    #      stack_name: { get_param: "OS::stack_name" }
+  image:
+    type: string
+    description: Server image id to use
+    default: Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
+    constraints:
+    # only tested on Ubuntu images so far
+    - allowed_values:
+      - Debian 7 (Wheezy) (PVHVM)
+      - Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
+      description: must be a valid Ubuntu image id
+  flavor:
+    description: Server flavor id to use
+    type: string
+    default: 4 GB Performance
+    constraints:
+    - allowed_values:
+      - 4 GB Performance
+      description: must be a valid Rackspace Cloud Server flavor.
+  postgres_version:
+    description: Version of PostgreSQL database
+    type: string
+    default: "9.3"
+    constraints:
+    # only supported versions of PostgreSQL
+    - allowed_values:
+      - "8.4"
+      - "9.0"
+      - "9.1"
+      - "9.2"
+      - "9.3"
+      description: must be a valid version of PostgreSQL.
+
+resources:
+  pgdb_server:
+    type: Rackspace::Cloud::Server
+    properties:
+      name: { get_param: server_name }
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: ssh_key }
+      user_data_format: RAW
+      config_drive: "true"
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash -v
+            ## Harden some of the things
+            export DEBIAN_FRONTEND=noninteractive
+            export myhostname=`hostname`
+            sudo apt-get install -y ufw
+            sudo ufw allow ssh
+            sudo ufw allow 5432
+            sudo ufw enable
+            sudo apt-get update
+            sudo apt-get install -y vim
+            sudo update-alternatives --set editor /usr/bin/vim.basic
+            ## Install and set up sar to run at 5 minute intervals
+            sudo apt-get install -y sysstat
+            sudo sed -i 's/false/true/g' /etc/default/sysstat
+            sudo sed -i 's/5-55\/10/\*\/5/g' /etc/cron.d/sysstat
+            sudo service sysstat restart
+            ## Setup the official PostgreSQL debian/ubuntu repo
+            sudo echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -c | awk '{print $(NF)}')-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+            sudo wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+            sudo apt-get update > /dev/null
+            ## set up the data disk
+            sudo apt-get install parted xfsprogs
+            sudo mkfs -t xfs /dev/xvde1
+            sudo mkdir -p /data
+            sudo echo '/dev/xvde1          /data  xfs    noatime,noquota,nobarrier      0      2' >> /etc/fstab
+            sudo mount -a
+            ## Install PostgreSQL
+            sysctl -w kernel.shmmax=$(($(free | grep Mem | awk '{print $2}') / 4)) >> /etc/sysctl.conf
+            sudo apt-get install -y postgresql-%postgres_version% postgresql-doc-%postgres_version% postgresql-contrib-%postgres_version%
+            sudo apt-get install -y postgresql-server-dev-%postgres_version%
+            # Hold packages
+            ## Move PG data directory to the ephemeral disk
+            sudo service postgresql stop
+            sudo cp -a /var/lib/postgresql/ /data/postgresql
+            sudo mv /var/lib/postgresql /var/lib/postgresql-old
+            sudo ln -s /data/postgresql /var/lib/postgresql
+            sudo service postgresql start
+
+          params:
+            "%postgres_version%": { get_param: postgres_version }
+
+outputs:
+  ssh:
+    value:
+      str_replace:
+        template: ssh root@%host%
+        params:
+          "%host%":
+            get_attr:
+            - pgdb_server
+            - accessIPv4
+    description: ssh
+  private_ip:
+    description: "Private IP of PostgreSQL Database"
+    value: { get_attr: [pgdb_server, privateIPv4] }
